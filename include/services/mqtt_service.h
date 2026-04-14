@@ -8,7 +8,7 @@
 #include "freertos/queue.h"
 
 esp_err_t mqtt_service_init(QueueHandle_t app_event_queue);
-esp_err_t mqtt_service_publish_status(const char *payload);
+esp_err_t mqtt_service_publish(const char *topic, const char *payload);
 bool mqtt_service_is_connected(void);
 
 #endif

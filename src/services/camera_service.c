@@ -29,19 +29,12 @@ esp_err_t camera_service_init(void)
 			.ledc_timer = LEDC_TIMER_0,
 			.ledc_channel = LEDC_CHANNEL_0,
 			.pixel_format = PIXFORMAT_JPEG,
-			.frame_size = FRAMESIZE_VGA,
-			.jpeg_quality = 12,
+			.frame_size = FRAMESIZE_QVGA,
+			.jpeg_quality = 50,
 			.fb_count = 2,
 			.grab_mode = CAMERA_GRAB_LATEST,
-			.fb_location = CAMERA_FB_IN_PSRAM,
+			.fb_location = CAMERA_FB_IN_DRAM,
 	};
-
-#if !CONFIG_SPIRAM && !CONFIG_ESP32_SPIRAM_SUPPORT
-	config.frame_size = FRAMESIZE_QVGA;
-	config.jpeg_quality = 16;
-	config.fb_count = 1;
-	config.fb_location = CAMERA_FB_IN_DRAM;
-#endif
 
 	esp_err_t err = esp_camera_init(&config);
 	if (err != ESP_OK)

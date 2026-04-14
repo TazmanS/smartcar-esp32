@@ -13,30 +13,34 @@ static const char *TAG = "mqtt_service";
 static QueueHandle_t s_app_event_queue;
 static esp_mqtt_client_handle_t s_client;
 static bool s_connected;
+static bool s_initialized;
 
 static void mqtt_service_post_simple_event(app_event_type_t type)
 {
-	if (s_app_event_queue == NULL) {
+	if (s_app_event_queue == NULL)
+	{
 		return;
 	}
 
 	app_event_t event = {
-		.type = type,
+			.type = type,
 	};
 
-	if (xQueueSend(s_app_event_queue, &event, 0) != pdPASS) {
+	if (xQueueSend(s_app_event_queue, &event, 0) != pdPASS)
+	{
 		ESP_LOGW(TAG, "Application queue is full, dropping MQTT event %d", type);
 	}
 }
 
 static void mqtt_service_post_message_event(const esp_mqtt_event_handle_t event)
 {
-	if (s_app_event_queue == NULL) {
+	if (s_app_event_queue == NULL)
+	{
 		return;
 	}
 
 	app_event_t app_event = {
-		.type = APP_EVENT_MQTT_MESSAGE,
+			.type = APP_EVENT_MQTT_MESSAGE,
 	};
 
 	size_t topic_len = event->topic_len < (APP_MQTT_TOPIC_MAX_LEN - 1) ? (size_t)event->topic_len : (APP_MQTT_TOPIC_MAX_LEN - 1);
@@ -48,7 +52,8 @@ static void mqtt_service_post_message_event(const esp_mqtt_event_handle_t event)
 	memcpy(app_event.data.mqtt_message.data, event->data, data_len);
 	app_event.data.mqtt_message.data[data_len] = '\0';
 
-	if (xQueueSend(s_app_event_queue, &app_event, 0) != pdPASS) {
+	if (xQueueSend(s_app_event_queue, &app_event, 0) != pdPASS)
+	{
 		ESP_LOGW(TAG, "Application queue is full, dropping MQTT payload");
 	}
 }
@@ -60,7 +65,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 	esp_mqtt_event_handle_t event = event_data;
 
-	switch ((esp_mqtt_event_id_t)event_id) {
+	switch ((esp_mqtt_event_id_t)event_id)
+	{
 	case MQTT_EVENT_CONNECTED:
 		s_connected = true;
 		ESP_LOGI(TAG, "Connected to broker");
@@ -85,33 +91,46 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 esp_err_t mqtt_service_init(QueueHandle_t app_event_queue)
 {
+	if (s_initialized)
+	{
+		return ESP_OK;
+	}
+
 	s_app_event_queue = app_event_queue;
 
 	esp_mqtt_client_config_t mqtt_cfg = {
-		.broker.address.uri = APP_MQTT_BROKER_URI,
-		.credentials.username = APP_MQTT_USERNAME,
-		.credentials.authentication.password = APP_MQTT_PASSWORD,
+			.broker.address.uri = APP_MQTT_BROKER_URI,
+			.credentials.username = APP_MQTT_USERNAME,
+			.credentials.authentication.password = APP_MQTT_PASSWORD,
 	};
 
 	s_client = esp_mqtt_client_init(&mqtt_cfg);
-	if (s_client == NULL) {
+	if (s_client == NULL)
+	{
 		return ESP_FAIL;
 	}
 
 	ESP_ERROR_CHECK(esp_mqtt_client_register_event(s_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL));
 	ESP_ERROR_CHECK(esp_mqtt_client_start(s_client));
 
+	s_initialized = true;
 	ESP_LOGI(TAG, "MQTT service started");
 	return ESP_OK;
 }
 
-esp_err_t mqtt_service_publish_status(const char *payload)
+esp_err_t mqtt_service_publish(const char *topic, const char *payload)
 {
-	if (!s_connected || s_client == NULL) {
+	if (topic == NULL || payload == NULL)
+	{
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	if (!s_connected || s_client == NULL)
+	{
 		return ESP_ERR_INVALID_STATE;
 	}
 
-	int message_id = esp_mqtt_client_publish(s_client, APP_MQTT_PUB_TOPIC, payload, 0, 1, 0);
+	int message_id = esp_mqtt_client_publish(s_client, topic, payload, 0, 1, 0);
 	return message_id >= 0 ? ESP_OK : ESP_FAIL;
 }
 

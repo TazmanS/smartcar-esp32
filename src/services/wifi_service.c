@@ -16,15 +16,17 @@ static bool s_wifi_connected;
 
 static void wifi_service_post_event(app_event_type_t type)
 {
-	if (s_app_event_queue == NULL) {
+	if (s_app_event_queue == NULL)
+	{
 		return;
 	}
 
 	app_event_t event = {
-		.type = type,
+			.type = type,
 	};
 
-	if (xQueueSend(s_app_event_queue, &event, 0) != pdPASS) {
+	if (xQueueSend(s_app_event_queue, &event, 0) != pdPASS)
+	{
 		ESP_LOGW(TAG, "Application queue is full, dropping Wi-Fi event %d", type);
 	}
 }
@@ -34,20 +36,24 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 	(void)arg;
 	(void)event_data;
 
-	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
+	{
 		esp_wifi_connect();
 		return;
 	}
 
-	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+	{
+		const wifi_event_sta_disconnected_t *event = (const wifi_event_sta_disconnected_t *)event_data;
 		s_wifi_connected = false;
-		ESP_LOGI(TAG, "Wi-Fi disconnected, retrying connection");
+		ESP_LOGW(TAG, "Wi-Fi disconnected, retrying connection (reason=%d)", event != NULL ? event->reason : -1);
 		wifi_service_post_event(APP_EVENT_WIFI_DISCONNECTED);
 		esp_wifi_connect();
 		return;
 	}
 
-	if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+	if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
+	{
 		ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
 		s_wifi_connected = true;
 		ESP_LOGI(TAG, "Wi-Fi connected, IP: " IPSTR, IP2STR(&event->ip_info.ip));
@@ -59,7 +65,8 @@ esp_err_t wifi_service_init(QueueHandle_t app_event_queue)
 {
 	static bool initialized;
 
-	if (initialized) {
+	if (initialized)
+	{
 		return ESP_OK;
 	}
 
@@ -76,26 +83,26 @@ esp_err_t wifi_service_init(QueueHandle_t app_event_queue)
 	esp_event_handler_instance_t ip_handler_instance;
 
 	ESP_ERROR_CHECK(esp_event_handler_instance_register(
-		WIFI_EVENT,
-		ESP_EVENT_ANY_ID,
-		&wifi_event_handler,
-		NULL,
-		&wifi_handler_instance));
+			WIFI_EVENT,
+			ESP_EVENT_ANY_ID,
+			&wifi_event_handler,
+			NULL,
+			&wifi_handler_instance));
 	ESP_ERROR_CHECK(esp_event_handler_instance_register(
-		IP_EVENT,
-		IP_EVENT_STA_GOT_IP,
-		&wifi_event_handler,
-		NULL,
-		&ip_handler_instance));
+			IP_EVENT,
+			IP_EVENT_STA_GOT_IP,
+			&wifi_event_handler,
+			NULL,
+			&ip_handler_instance));
 
 	wifi_config_t wifi_config = {
-		.sta = {
-			.threshold.authmode = WIFI_AUTH_WPA2_PSK,
-			.pmf_cfg = {
-				.capable = true,
-				.required = false,
+			.sta = {
+					.threshold.authmode = WIFI_AUTH_WPA2_PSK,
+					.pmf_cfg = {
+							.capable = true,
+							.required = false,
+					},
 			},
-		},
 	};
 
 	strncpy((char *)wifi_config.sta.ssid, APP_WIFI_SSID, sizeof(wifi_config.sta.ssid) - 1);
